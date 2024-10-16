@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/carbon"
+    tools:context=".MainActivity">
+
+  <TableLayout
+      android:layout_width="match_parent"
+      android:layout_height="match_parent">
+
+    <ImageView
+        android:contentDescription="@string/desclogo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="4"
+        android:layout_marginTop="10dp"
+        android:src="@drawable/sethlanslogo"/>
+
+    <Space
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="60"/>
+
+    <EditText
+        android:id="@+id/codigo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="15dp"
+        android:layout_marginEnd="15dp"
+        android:textColor="@color/white"
+        android:hint="@string/pistaescaneo"
+        android:textColorHint="@color/grey"/>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:layout_gravity="center">
+
+
+      <Button
+          android:id="@+id/btnEscanear"
+          android:layout_width="wrap_content"
+          android:layout_height="match_parent"
+          android:layout_weight="1"
+          android:layout_marginStart="2dp"
+          android:layout_marginEnd="2dp"
+          android:backgroundTint="@color/grey"
+          android:text="@string/escanear"/>
+
+      <Button
+          android:id="@+id/btnSiguiente"
+          android:layout_width="wrap_content"
+          android:layout_height="match_parent"
+          android:layout_weight="1"
+          android:layout_marginStart="2dp"
+          android:layout_marginEnd="2dp"
+          android:backgroundTint="@color/grey"
+          android:text="@string/siguiente"/>
+    </LinearLayout>
+  </TableLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

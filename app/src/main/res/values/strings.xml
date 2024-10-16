@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">EscanerEntrada</string>
+    <string name="escanear">Escanear</string>
+    <string name="siguiente">Siguiente</string>
+    <string name="camara">Camara</string>
+    <string name="foto">Foto</string>
+    <string name="cancelar">Cancelar</string>
+    <string name="guardar">Guardar</string>
+
+    <string name="flecha">↩</string>
+    <string name="tick">✓</string>
+    <string name="espacio">‎</string>
+
+    <string name="pistaescaneo">Introduzca el código de barras</string>
+    <string name="pistausuario">Usuario</string>
+    <string name="pistacontrasena">Contraseña</string>
+
+    <string name="desclogo">Logo Sethlans Enterprise</string>
+</resources>
