@@ -13,16 +13,23 @@ import androidx.core.content.ContextCompat;
 import com.escanerentrada.R;
 import com.escanerentrada.camera.BaseCameraActivity;
 
+/**
+ * Clase que se encarga de escanear el código de barras.
+ */
 public class ScannerActivity extends BaseCameraActivity implements BarcodeListener {
 
-    private Button btnCancelar;
     private CameraSelector cameraSelector;
 
+    /**
+     * Método que se ejecuta al iniciar la actividad.
+     *
+     * @param state Estado de la actividad
+     */
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
 
-        btnCancelar = findViewById(R.id.btnCancelar);
+        Button btnCancelar = findViewById(R.id.btnCancelar);
         btnCancelar.setOnClickListener(v -> finish());
 
         cameraSelector = new CameraSelector.Builder()
@@ -43,16 +50,31 @@ public class ScannerActivity extends BaseCameraActivity implements BarcodeListen
         }, ContextCompat.getMainExecutor(this));
     }
 
+    /**
+     * Método que devuelve el layout de la actividad.
+     *
+     * @return Layout de la actividad
+     */
     @Override
     protected int getLayoutId() {
         return R.layout.activity_scanner;
     }
 
+    /**
+     * Método que devuelve el id del preview view.
+     *
+     * @return Id del preview view
+     */
     @Override
     protected int getPreviewViewId() {
         return R.id.previewView;
     }
 
+    /**
+     * Método que se ejecuta cuando se detecta un código de barras.
+     *
+     * @param barcode Código de barras
+     */
     @Override
     public void onBarcodeDetected(String barcode) {
         runOnUiThread(() -> {

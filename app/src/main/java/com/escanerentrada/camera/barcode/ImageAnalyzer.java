@@ -25,11 +25,12 @@ public class ImageAnalyzer  implements ImageAnalysis.Analyzer{
 
     private final Context context;
     private String codigo;
-    private BarcodeListener listener;
+    private final BarcodeListener listener;
 
     /**
      * Constructor de la clase.
-     * @param context
+     *
+     * @param context Contexto de la aplicación
      */
     public ImageAnalyzer(Context context, BarcodeListener listener) {
         this.context = context;
@@ -38,6 +39,7 @@ public class ImageAnalyzer  implements ImageAnalysis.Analyzer{
 
     /**
      * Método que se ejecuta para analizar una imagen.
+     *
      * @param imageProxy The image to analyze
      */
     @Override

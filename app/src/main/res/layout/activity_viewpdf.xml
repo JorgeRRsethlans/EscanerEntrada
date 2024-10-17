@@ -20,19 +20,6 @@
             android:layout_weight="3"/>
 
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content">
-
-            <Button
-                android:id="@+id/btnCamara"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:text="@string/camara"
-                android:backgroundTint="@color/grey"/>
-        </LinearLayout>
-
-        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
@@ -67,12 +54,12 @@
                 android:backgroundTint="@color/red"
                 android:text="@string/cancelar"/>
             <Button
-                android:id="@+id/btnGuardar"
+                android:id="@+id/btnContinuar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:backgroundTint="@color/green"
-                android:text="@string/guardar"/>
+                android:text="@string/continuar"/>
         </LinearLayout>
     </TableLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,5 +1,6 @@
 package com.escanerentrada.camera.barcode;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -9,6 +10,8 @@ import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.View;
+
+import androidx.annotation.NonNull;
 
 /**
  * Clase que se encarga de dibujar el cuadro de la cámara.
@@ -22,7 +25,7 @@ public class CameraOverlayView extends View {
     /**
      * Constructor de la clase.
      *
-     * @param context
+     * @param context Contexto
      */
     public CameraOverlayView(Context context) {
         super(context);
@@ -32,8 +35,8 @@ public class CameraOverlayView extends View {
     /**
      * Constructor de la clase.
      *
-     * @param context
-     * @param attrs
+     * @param context Contexto
+     * @param attrs Atributos
      */
     public CameraOverlayView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -43,9 +46,9 @@ public class CameraOverlayView extends View {
     /**
      * Constructor de la clase.
      *
-     * @param context
-     * @param attrs
-     * @param defStyleAttr
+     * @param context Contexto
+     * @param attrs Atributos
+     * @param defStyleAttr Estilo
      */
     public CameraOverlayView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
@@ -68,10 +71,10 @@ public class CameraOverlayView extends View {
     /**
      * Método que se ejecuta cuando cambia el tamaño de la vista.
      *
-     * @param w
-     * @param h
-     * @param oldw
-     * @param oldh
+     * @param w Ancho nuevo
+     * @param h Alto nuevo
+     * @param oldw Ancho anterior
+     * @param oldh Alto anterior
      */
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
@@ -88,10 +91,11 @@ public class CameraOverlayView extends View {
     /**
      * Método que se ejecuta cuando se dibuja la vista.
      *
-     * @param canvas
+     * @param canvas Canvas
      */
+    @SuppressLint("DrawAllocation")
     @Override
-    protected void onDraw(Canvas canvas) {
+    protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
 
         canvas.drawRect(0, 0, getWidth(), frameRect.top, backgroundPaint);

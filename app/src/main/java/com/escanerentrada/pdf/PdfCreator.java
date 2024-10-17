@@ -1,5 +1,6 @@
 package com.escanerentrada.pdf;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -23,11 +24,13 @@ public class PdfCreator {
 
     /**
      * Método que crea el PDF.
-     * @param context
-     * @param filePath
-     * @param content
+     *
+     * @param context Contexto de la aplicación
+     * @param filePath Ruta del archivo
+     * @param content Contenido del PDF
      */
     public static void createPdf(Context context, String filePath, String[] content) {
+        @SuppressLint("SimpleDateFormat")
         String dateTime = new SimpleDateFormat("yyyy/MM/dd_HH:mm:ss").format(new Date());
 
         int dpi = 2700;

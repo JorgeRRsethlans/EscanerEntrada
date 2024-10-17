@@ -36,9 +36,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int CODIGO_PERMISOS_CAMARA = 1, CODIGO_INTENT = 2;
     private boolean permisoCamaraConcedido = false;
-    private BarcodeAnalyzer barcodeAnalyzer = new BarcodeAnalyzer();
+    private final BarcodeAnalyzer barcodeAnalyzer = new BarcodeAnalyzer();
     private EditText codigo;
-    private Button btnEscanear, btnSiguiente;
 
     /**
      * Método que se ejecuta al iniciar la actividad.
@@ -57,8 +56,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         //Asignamos los elementos creados en los layouts para que puedan ser usados.
-        btnEscanear = findViewById(R.id.btnEscanear);
-        btnSiguiente = findViewById(R.id.btnSiguiente);
+        Button btnEscanear = findViewById(R.id.btnEscanear);
+        Button btnSiguiente = findViewById(R.id.btnSiguiente);
         codigo = findViewById(R.id.codigo);
 
         //Creamos un listener para el botón de escanear.
@@ -76,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
         btnSiguiente.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(codigo.getText().toString().equals("")) {
+                if(codigo.getText().toString().isEmpty()) {
                     Toast.makeText(MainActivity.this, "No se ha introducido ningún código",
                             Toast.LENGTH_SHORT).show();
                 } else {
@@ -188,9 +187,9 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Método que obtiene la información de la API sobre el producto recién escaneado.
      *
-     * @param barcode
-     * @param info
-     * @return
+     * @param barcode Codigo de barras
+     * @param info Informacion a obtener
+     * @return Informacion
      */
     private String geInfo(String barcode, String info) {
         try {

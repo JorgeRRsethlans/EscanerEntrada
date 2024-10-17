@@ -48,7 +48,4 @@ dependencies {
     implementation libs.okhttp
 
     implementation libs.jcifs
-
-    implementation libs.github.glide
-    annotationProcessor libs.glide.compiler
 }

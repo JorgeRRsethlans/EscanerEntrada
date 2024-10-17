@@ -14,14 +14,14 @@ import okhttp3.Response;
  */
 public class BarcodeAnalyzer {
 
-    private static OkHttpClient client =  new OkHttpClient();
+    private static final OkHttpClient client =  new OkHttpClient();
 
     /**
      * Método que obtiene la información de la API.
      *
-     * @param barcode
-     * @param info
-     * @return
+     * @param barcode Código de barras
+     * @param info Información
+     * @return Información
      */
     public String getInfo(String barcode, String info) {
         String url = "https://opengtindb.org/?ean=" + barcode + "&cmd=query&queryid=" + Math.random();
@@ -34,6 +34,7 @@ public class BarcodeAnalyzer {
                 throw new IOException("Unexpected code " + response);
             }
 
+            assert response.body() != null;
             String responseBody = response.body().string();
             JSONObject json = new JSONObject(responseBody);
 

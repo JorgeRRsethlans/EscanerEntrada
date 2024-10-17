@@ -36,16 +36,13 @@ public class ViewPdfActivity extends AppCompatActivity {
     private CredentialManager credentialManager;
 
     private ImageView imageView;
-    private Button btnCamara;
     private EditText txtUsuario;
     private EditText txtContrasena;
-    private Button btnGuardar;
-    private Button btnCancelar;
 
     /**
      * Método que se ejecuta cuando se crea la actividad.
      *
-     * @param state
+     * @param state Estado de la actividad
      */
     @Override
     public void onCreate(Bundle state) {
@@ -53,15 +50,15 @@ public class ViewPdfActivity extends AppCompatActivity {
         setContentView(R.layout.activity_viewpdf);
 
         imageView = findViewById(R.id.imageView);
-        btnCamara = findViewById(R.id.btnCamara);
         txtUsuario = findViewById(R.id.txtUsuario);
         txtContrasena = findViewById(R.id.txtContrasena);
-        btnGuardar = findViewById(R.id.btnGuardar);
-        btnCancelar = findViewById(R.id.btnCancelar);
+        Button btnContinuar = findViewById(R.id.btnContinuar);
+        Button btnCancelar = findViewById(R.id.btnCancelar);
 
         String filepath = getIntent().getStringExtra("stringextra");
 
         try {
+            assert filepath != null;
             File file = new File(filepath);
             if(!file.exists()) {
                 Toast.makeText(this, "Error, el PDF no se ha creado",
@@ -74,14 +71,6 @@ public class ViewPdfActivity extends AppCompatActivity {
         } catch(IOException e) {
             Toast.makeText(this, "Error al cargar el PDF", Toast.LENGTH_SHORT).show();
         }
-
-        btnCamara.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent i = new Intent(ViewPdfActivity.this, PhotosActivity.class);
-                startActivity(i);
-            }
-        });
 
         btnCancelar.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -97,11 +86,12 @@ public class ViewPdfActivity extends AppCompatActivity {
             txtContrasena.setText(credentials[1]);
         }
 
-        btnGuardar.setOnClickListener(new View.OnClickListener() {
+        btnContinuar.setOnClickListener(new View.OnClickListener() {
             @SuppressLint("NewApi")
             @Override
             public void onClick(View view) {
                 String filepath = getIntent().getStringExtra("stringextra");
+                assert filepath != null;
                 File file = new File(filepath);
 
                 String username = txtUsuario.getText().toString();
@@ -130,6 +120,7 @@ public class ViewPdfActivity extends AppCompatActivity {
 
                             int folderNumber = 1;
                             while (true) {
+                                @SuppressLint("DefaultLocale")
                                 SmbFile folder = new SmbFile(baseDir +
                                         String.format("%04d", folderNumber) + "/");
                                 if (!folder.exists()) {
@@ -139,8 +130,9 @@ public class ViewPdfActivity extends AppCompatActivity {
                                 folderNumber++;
                             }
 
-                            String destPath = baseDir + String.format("%04d", folderNumber) + "/" +
-                                    file.getName();
+                            @SuppressLint("DefaultLocale")
+                            String dirPath = baseDir + String.format("%04d", folderNumber) + "/";
+                            String destPath = dirPath + file.getName();
 
                             SmbFileOutputStream out = new SmbFileOutputStream(new SmbFile(destPath));
                             Files.copy(file.toPath(), out);
@@ -151,10 +143,12 @@ public class ViewPdfActivity extends AppCompatActivity {
                                 public void run() {
                                     Toast.makeText(ViewPdfActivity.this,
                                             "PDF guardado.", Toast.LENGTH_LONG).show();
+                                    Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
+                                    intent.putExtra("directorio", dirPath);
+                                    startActivity(intent);
                                 }
                             });
                         } catch (Exception e) {
-                            e.printStackTrace();
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
@@ -166,7 +160,6 @@ public class ViewPdfActivity extends AppCompatActivity {
                         }
                     }
                 }).start();
-                finish();
             }
         });
     }
@@ -174,7 +167,7 @@ public class ViewPdfActivity extends AppCompatActivity {
     /**
      * Método que se ejecuta para mostrar una página del PDF.
      *
-     * @param index
+     * @param index Índice de la página a mostrar
      */
     private void showPage(int index) {
         if(pdfRenderer != null && index < pdfRenderer.getPageCount()) {
