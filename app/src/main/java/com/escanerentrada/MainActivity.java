@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -61,45 +60,32 @@ public class MainActivity extends AppCompatActivity {
         codigo = findViewById(R.id.codigo);
 
         //Creamos un listener para el botón de escanear.
-        btnEscanear.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                verificarYPedirPermisosDeCamara();
-                if(permisoCamaraConcedido) {
-                    escanear();
-                }
+        btnEscanear.setOnClickListener(view -> {
+            verificarYPedirPermisosDeCamara();
+            if(permisoCamaraConcedido) {
+                escanear();
             }
         });
 
         //Creamos un listener para el botón siguiente.
-        btnSiguiente.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if(codigo.getText().toString().isEmpty()) {
-                    Toast.makeText(MainActivity.this, "No se ha introducido ningún código",
-                            Toast.LENGTH_SHORT).show();
-                } else {
-                    String empresa = null, producto = null, descripcion = null, origen = null;
-                    try {
-                        empresa = barcodeAnalyzer.getInfo(codigo.getText().toString(), "brand");
-                        producto = barcodeAnalyzer.getInfo(codigo.getText().toString(), "name");
-                        origen = barcodeAnalyzer.getInfo(codigo.getText().toString(), "origin");
+        btnSiguiente.setOnClickListener(view -> {
+            if(codigo.getText().toString().isEmpty()) {
+                Toast.makeText(MainActivity.this, "No se ha introducido ningún código",
+                        Toast.LENGTH_SHORT).show();
+            } else {
+                String codigoBarras = codigo.getText().toString();
+                String empresa = getInfo(codigoBarras, "brand");
+                String producto = getInfo(codigoBarras, "name");
+                String origen = getInfo(codigoBarras, "origin");
 
-                    } catch (Exception e) {
-                        Toast.makeText(MainActivity.this,
-                                "Error al obtener la información de la API",
-                                Toast.LENGTH_SHORT).show();
-                    }
-
-                    String[] contenido = {codigo.getText().toString(),
-                            empresa, producto, origen};
-                    PdfCreator.createPdf(MainActivity.this,
-                            getCacheDir().getAbsolutePath() + "/etiqueta.pdf", contenido);
-                    Intent i = new Intent(MainActivity.this, ViewPdfActivity.class);
-                    i.putExtra("stringextra", getCacheDir().getAbsolutePath() +
-                            "/etiqueta.pdf");
-                    startActivity(i);
-                }
+                String[] contenido = {codigo.getText().toString(),
+                        empresa, producto, origen};
+                PdfCreator.createPdf(MainActivity.this,
+                        getCacheDir().getAbsolutePath() + "/etiqueta.pdf", contenido);
+                Intent i = new Intent(MainActivity.this, ViewPdfActivity.class);
+                i.putExtra("stringextra", getCacheDir().getAbsolutePath() +
+                        "/etiqueta.pdf");
+                startActivity(i);
             }
         });
     }
@@ -174,14 +160,9 @@ public class MainActivity extends AppCompatActivity {
     private void permisoCamaraDenegado() {
         Snackbar.make(findViewById(android.R.id.content),
             "Se necesita permiso para poder escanear", Snackbar.LENGTH_INDEFINITE)
-            .setAction("Otorgar", new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    ActivityCompat.requestPermissions(MainActivity.this,
-                            new String[]{android.Manifest.permission.CAMERA},
-                            CODIGO_PERMISOS_CAMARA);
-                }
-            }).show();
+            .setAction("Otorgar", view -> ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[]{android.Manifest.permission.CAMERA},
+                    CODIGO_PERMISOS_CAMARA)).show();
     }
 
     /**
@@ -191,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
      * @param info Informacion a obtener
      * @return Informacion
      */
-    private String geInfo(String barcode, String info) {
+    private String getInfo(String barcode, String info) {
         try {
             return barcodeAnalyzer.getInfo(barcode, info);
         } catch(Exception e) {

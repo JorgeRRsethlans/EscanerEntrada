@@ -6,7 +6,6 @@ import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Vibrator;
-import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -44,26 +43,11 @@ public class PhotosActivity extends BaseCameraActivity {
         Button btnFoto = findViewById(R.id.btnFoto);
         Button btnAceptar = findViewById(R.id.btnAceptar);
 
-        btnAtras.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                finish();
-            }
-        });
+        btnAtras.setOnClickListener(view -> finish());
 
-        btnFoto.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                takePhotoAndUpload();
-            }
-        });
+        btnFoto.setOnClickListener(view -> takePhotoAndUpload());
 
-        btnAceptar.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                finish();
-            }
-        });
+        btnAceptar.setOnClickListener(view -> finish());
 
         directorio = getIntent().getStringExtra("directorio");
         if(directorio == null || directorio.isEmpty()) {
@@ -106,19 +90,15 @@ public class PhotosActivity extends BaseCameraActivity {
             @Override
             public void onCaptureSuccess(@NonNull ImageProxy image) {
                 Bitmap bitmap = imageProxyToBitmap(image);
-                runOnUiThread(() -> {
-                    uploadPhoto(bitmap);
-                });
+                runOnUiThread(() -> uploadPhoto(bitmap));
                 image.close();
             }
 
             @Override
             public void onError(@NonNull ImageCaptureException exception) {
-                runOnUiThread(() -> {
-                    Toast.makeText(PhotosActivity.this,
-                            "Error al tomar la foto: " + exception.getMessage(),
-                            Toast.LENGTH_SHORT).show();
-                });
+                runOnUiThread(() -> Toast.makeText(PhotosActivity.this,
+                        "Error al tomar la foto: " + exception.getMessage(),
+                        Toast.LENGTH_SHORT).show());
             }
         });
     }
@@ -150,10 +130,8 @@ public class PhotosActivity extends BaseCameraActivity {
             SmbFileOutputStream out = new SmbFileOutputStream(archivoSmb);
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
             out.close();
-            runOnUiThread(() -> {
-                Toast.makeText(PhotosActivity.this, "Imagen subida correctamente",
-                        Toast.LENGTH_SHORT).show();
-            });
+            runOnUiThread(() -> Toast.makeText(PhotosActivity.this, "Imagen subida correctamente",
+                    Toast.LENGTH_SHORT).show());
         } catch (Exception e) {
             Toast.makeText(PhotosActivity.this,
                     "Error al subir la imagen: " + e.getMessage(),
