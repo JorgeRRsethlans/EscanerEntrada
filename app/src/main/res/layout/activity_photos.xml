@@ -20,7 +20,7 @@
             android:layout_gravity="bottom"
             android:layout_marginBottom="10dp"
             android:layout_marginStart="10dp"
-            android:text="@string/flecha"
+            android:text="@string/cruz"
             android:textSize="30sp"
             android:backgroundTint="@color/red"/>
 

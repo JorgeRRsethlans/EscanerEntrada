@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.Toast;
 
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageAnalysis;
@@ -13,12 +14,15 @@ import androidx.core.content.ContextCompat;
 import com.escanerentrada.R;
 import com.escanerentrada.camera.BaseCameraActivity;
 
+import java.util.concurrent.ExecutionException;
+
 /**
  * Clase que se encarga de escanear el código de barras.
  */
 public class ScannerActivity extends BaseCameraActivity implements BarcodeListener {
 
     private CameraSelector cameraSelector;
+    private ImageAnalysis imageAnalysis;
 
     /**
      * Método que se ejecuta al iniciar la actividad.
@@ -35,7 +39,7 @@ public class ScannerActivity extends BaseCameraActivity implements BarcodeListen
         cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
 
-        ImageAnalysis imageAnalysis = new ImageAnalysis.Builder()
+        imageAnalysis = new ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build();
         imageAnalysis.setAnalyzer(cameraExecutor, new ImageAnalyzer(this, this));
@@ -81,6 +85,15 @@ public class ScannerActivity extends BaseCameraActivity implements BarcodeListen
             Intent intent = new Intent();
             intent.putExtra("codigo", barcode);
             setResult(RESULT_OK, intent);
+            ProcessCameraProvider cameraProvider = null;
+            try {
+                cameraProvider = ProcessCameraProvider
+                        .getInstance(this).get();
+                cameraProvider.unbind(imageAnalysis);
+            } catch (ExecutionException | InterruptedException e) {
+                Toast.makeText(this,
+                        "Error al cerrar la camara", Toast.LENGTH_SHORT).show();
+            }
             finish();
         });
     }

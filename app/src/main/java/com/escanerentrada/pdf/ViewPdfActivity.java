@@ -4,8 +4,10 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
+import android.text.InputFilter;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -21,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import jcifs.Config;
 import jcifs.smb.SmbFile;
 import jcifs.smb.SmbFileOutputStream;
 
@@ -50,10 +53,13 @@ public class ViewPdfActivity extends AppCompatActivity {
         setContentView(R.layout.activity_viewpdf);
 
         imageView = findViewById(R.id.imageView);
-        txtUsuario = findViewById(R.id.txtUsuario);
-        txtContrasena = findViewById(R.id.txtContrasena);
         Button btnContinuar = findViewById(R.id.btnContinuar);
         Button btnCancelar = findViewById(R.id.btnCancelar);
+        txtUsuario = findViewById(R.id.txtUsuario);
+        txtContrasena = findViewById(R.id.txtContrasena);
+        txtContrasena.setFilters(new InputFilter[] {
+                new InputFilter.LengthFilter(10)
+        });
 
         String filepath = getIntent().getStringExtra("stringextra");
 
@@ -93,65 +99,14 @@ public class ViewPdfActivity extends AppCompatActivity {
                 String password = txtContrasena.getText().toString();
                 credentialManager.saveCredentials(txtUsuario.getText().toString(),
                         txtContrasena.getText().toString());
-
-                new Thread(() -> {
-                    try {
-                        jcifs.Config.setProperty("jcifs.smb.client.disablePlainTextPasswords",
-                                "false");
-                        jcifs.Config.setProperty("jcifs.smb.client.connectTimeout", "10000");
-                        jcifs.Config.setProperty("jcifs.smb.client.responseTimeout", "10000");
-                        jcifs.Config.setProperty("jcifs.smb.client.soTimeout", "10000");
-
-                        String baseDir = "smb://" + username + ":" + password +
-                                "@192.168.1.133" +
-                                "/sethlans_administracion/R - CLOUD/DRIVE/IT/Recepciones/";
-                        SmbFile smbFile = new SmbFile(baseDir);
-
-                        if (!smbFile.exists()) {
-                            smbFile.mkdirs();
-                        }
-
-                        int folderNumber = 1;
-                        while (true) {
-                            @SuppressLint("DefaultLocale")
-                            SmbFile folder = new SmbFile(baseDir +
-                                    String.format("%04d", folderNumber) + "/");
-                            if (!folder.exists()) {
-                                folder.mkdirs();
-                                break;
-                            }
-                            folderNumber++;
-                        }
-
-                        @SuppressLint("DefaultLocale")
-                        String dirPath = baseDir + String.format("%04d", folderNumber) + "/";
-                        String destPath = dirPath + file.getName();
-
-                        SmbFileOutputStream out = new SmbFileOutputStream(new SmbFile(destPath));
-                        Files.copy(file.toPath(), out);
-                        out.close();
-
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(ViewPdfActivity.this,
-                                        "PDF guardado.", Toast.LENGTH_LONG).show();
-                                Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
-                                intent.putExtra("directorio", dirPath);
-                                startActivity(intent);
-                            }
-                        });
-                    } catch (Exception e) {
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                Toast.makeText(ViewPdfActivity.this,
-                                        "Error al guardar el PDF: " + e.getMessage(),
-                                        Toast.LENGTH_LONG).show();
-                            }
-                        });
-                    }
-                }).start();
+                //uploadPdf(file, username, password);
+                //uploadPdfLocal(file);
+                Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
+                intent.putExtra("directorio",
+                        "smb://" + username + ":" +
+                                password + "@192.168.1.133" +
+                                "/sethlans_administracion/R - CLOUD/DRIVE/IT/Recepciones/");
+                startActivity(intent);
             }
         });
     }
@@ -174,6 +129,129 @@ public class ViewPdfActivity extends AppCompatActivity {
             imageView.setImageBitmap(bitmap);
             currentPageIndex = index;
         }
+    }
+
+    /**
+     * Metodo que se ejecuta para subir el PDF al directorio en la red local.
+     *
+     * @param file Archivo a subir
+     * @param username Nombre de usuario
+     * @param password Contraseña
+     */
+    private void uploadPdf(File file, String username, String password) {
+        new Thread(() -> {
+            try {
+                Config.setProperty("jcifs.smb.client.disablePlainTextPasswords",
+                        "false");
+                Config.setProperty("jcifs.smb.client.connectTimeout", "10000");
+                Config.setProperty("jcifs.smb.client.responseTimeout", "10000");
+                Config.setProperty("jcifs.smb.client.soTimeout", "10000");
+
+                String baseDir = "smb://" + username + ":" + password +
+                        "@192.168.1.133" +
+                        "/sethlans_administracion/R - CLOUD/DRIVE/IT/Recepciones/";
+                SmbFile smbFile = new SmbFile(baseDir);
+
+                if (!smbFile.exists()) {
+                    smbFile.mkdirs();
+                }
+
+                int folderNumber = 1;
+                while (true) {
+                    @SuppressLint("DefaultLocale")
+                    SmbFile folder = new SmbFile(baseDir +
+                            String.format("%04d", folderNumber) + "/");
+                    if (!folder.exists()) {
+                        folder.mkdirs();
+                        break;
+                    }
+                    folderNumber++;
+                }
+
+                @SuppressLint("DefaultLocale")
+                String dirPath = baseDir + String.format("%04d", folderNumber) + "/";
+                String destPath = dirPath + file.getName();
+
+                SmbFileOutputStream out = new SmbFileOutputStream(new SmbFile(destPath));
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Files.copy(file.toPath(), out);
+                }
+                out.close();
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(ViewPdfActivity.this,
+                                "PDF guardado.", Toast.LENGTH_LONG).show();
+                        Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
+                        intent.putExtra("directorio", dirPath);
+                        startActivity(intent);
+                    }
+                });
+            } catch (Exception e) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(ViewPdfActivity.this,
+                                "Error al guardar el PDF: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /**
+     * Metodo que se ejecuta para subir el PDF localmente.
+     *
+     * @param file Archivo a subir
+     */
+    @SuppressLint("DefaultLocale")
+    private void uploadPdfLocal(File file) {
+        new Thread(() -> {
+            try {
+                String baseDir = "storage/emulated/0/RECEPCIONES";
+                File baseDirFile = new File(baseDir);
+                if(!baseDirFile.exists()) {
+                    baseDirFile.mkdirs();
+                }
+
+                int folderNumber = 1;
+                File dirFile;
+                while(true) {
+                    dirFile = new File(baseDir + String.format("%04d", folderNumber) + "/");
+                    if(!dirFile.exists()) {
+                        dirFile.mkdirs();
+                        break;
+                    }
+                    folderNumber++;
+                }
+                String dirPath = dirFile.getPath() + "/" + file.getName();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    Files.copy(file.toPath(), new File(dirPath).toPath());
+                }
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(ViewPdfActivity.this,
+                                "PDF guardado localmente.", Toast.LENGTH_LONG).show();
+                        Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
+                        intent.putExtra("directorio", dirPath);
+                        startActivity(intent);
+                    }
+                });
+            } catch(Exception e) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(ViewPdfActivity.this,
+                                "Error al guardar el PDF localmente: " + e.getMessage(),
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }).start();
     }
 
     /**

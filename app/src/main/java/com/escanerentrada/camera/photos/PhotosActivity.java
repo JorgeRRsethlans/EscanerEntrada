@@ -10,13 +10,17 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.ImageProxy;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.core.content.ContextCompat;
 
 import com.escanerentrada.R;
 import com.escanerentrada.camera.BaseCameraActivity;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
@@ -54,6 +58,22 @@ public class PhotosActivity extends BaseCameraActivity {
             Toast.makeText(this, "Directorio no válido", Toast.LENGTH_SHORT).show();
             finish();
         }
+
+        CameraSelector cameraSelector = new CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
+        cameraProviderFuture = ProcessCameraProvider.getInstance(this);
+        cameraProviderFuture.addListener(() -> {
+            try {
+                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
+                bindPreview(cameraProvider);
+                imageCapture = new ImageCapture.Builder().build();
+                cameraProvider.bindToLifecycle(this,
+                        cameraSelector, preview, imageCapture);
+            } catch(Exception e) {
+                Toast.makeText(this,
+                        "Error al reiniciar la camara", Toast.LENGTH_SHORT).show();
+            }
+        }, ContextCompat.getMainExecutor(this));
     }
 
     /**
@@ -89,9 +109,11 @@ public class PhotosActivity extends BaseCameraActivity {
         imageCapture.takePicture(executor, new ImageCapture.OnImageCapturedCallback() {
             @Override
             public void onCaptureSuccess(@NonNull ImageProxy image) {
-                Bitmap bitmap = imageProxyToBitmap(image);
-                runOnUiThread(() -> uploadPhoto(bitmap));
-                image.close();
+                executor.execute(() -> {
+                    Bitmap bitmap = imageProxyToBitmap(image);
+                    image.close();
+                    runOnUiThread(() -> uploadPhoto(bitmap));
+                });
             }
 
             @Override
@@ -111,9 +133,10 @@ public class PhotosActivity extends BaseCameraActivity {
      * @return Imagen convertida
      */
     private Bitmap imageProxyToBitmap(ImageProxy image) {
-        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-        buffer.rewind();
-        byte[] bytes = image.getPlanes()[0].getBuffer().array();
+        ImageProxy.PlaneProxy plane = image.getPlanes()[0];
+        ByteBuffer buffer = plane.getBuffer();
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes);
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
     }
 
@@ -125,18 +148,20 @@ public class PhotosActivity extends BaseCameraActivity {
     private void uploadPhoto(Bitmap bitmap) {
         String nombreArchivo = generateUniqueKey() + ".jpg";
         String rutaArchivo = directorio + nombreArchivo;
-        try {
-            SmbFile archivoSmb = new SmbFile(rutaArchivo);
-            SmbFileOutputStream out = new SmbFileOutputStream(archivoSmb);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
-            out.close();
-            runOnUiThread(() -> Toast.makeText(PhotosActivity.this, "Imagen subida correctamente",
-                    Toast.LENGTH_SHORT).show());
-        } catch (Exception e) {
-            Toast.makeText(PhotosActivity.this,
-                    "Error al subir la imagen: " + e.getMessage(),
-                    Toast.LENGTH_SHORT).show();
-        }
+        executor.execute(() -> {
+            try {
+                SmbFile archivoSmb = new SmbFile(rutaArchivo);
+                SmbFileOutputStream out = new SmbFileOutputStream(archivoSmb);
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
+                out.close();
+                runOnUiThread(() -> Toast.makeText(PhotosActivity.this, "Imagen subida correctamente",
+                        Toast.LENGTH_SHORT).show());
+            } catch (IOException e) {
+                runOnUiThread(() -> Toast.makeText(PhotosActivity.this,
+                        "Error al subir la imagen: " + e.getMessage(),
+                        Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     /**

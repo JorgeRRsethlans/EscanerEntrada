@@ -85,7 +85,7 @@ public abstract class BaseCameraActivity extends AppCompatActivity {
      *
      * @param cameraProvider Proveedor de la cámara
      */
-    private void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
+    protected void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
         CameraSelector cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK)
                 .build();
