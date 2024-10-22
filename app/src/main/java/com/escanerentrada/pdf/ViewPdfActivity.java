@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.pdf.PdfRenderer;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.text.InputFilter;
@@ -21,11 +20,13 @@ import com.escanerentrada.camera.photos.PhotosActivity;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 
-import jcifs.Config;
-import jcifs.smb.SmbFile;
-import jcifs.smb.SmbFileOutputStream;
+import io.github.eliux.mega.Mega;
+import io.github.eliux.mega.MegaSession;
+import io.github.eliux.mega.auth.MegaAuthCredentials;
+import io.github.eliux.mega.error.MegaException;
+import io.github.eliux.mega.error.MegaLoginException;
+
 
 /**
  * Clase que se encarga de mostrar el PDF.
@@ -97,15 +98,36 @@ public class ViewPdfActivity extends AppCompatActivity {
 
                 String username = txtUsuario.getText().toString();
                 String password = txtContrasena.getText().toString();
-                credentialManager.saveCredentials(txtUsuario.getText().toString(),
-                        txtContrasena.getText().toString());
-                //uploadPdf(file, username, password);
-                //uploadPdfLocal(file);
+                String remoteBasePath = "/SETHLANS/ENTRADAS";
+
+                credentialManager.saveCredentials(username, password);
+
                 Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
-                intent.putExtra("directorio",
-                        "smb://" + username + ":" +
-                                password + "@192.168.1.133" +
-                                "/sethlans_administracion/R - CLOUD/DRIVE/IT/Recepciones/");
+
+                try {
+                    MegaSession session = Mega.login(new MegaAuthCredentials(username, password));
+                    String remotePath = createRemoteFolders(remoteBasePath, session);
+                    session.uploadFile(file.getAbsolutePath(), remotePath)
+                            .createRemotePathIfNotPresent().run();
+
+                    intent.putExtra("remotePath", remotePath);
+                    intent.putExtra("username", username);
+                    intent.putExtra("password", password);
+
+                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
+                            "PDF guardado.", Toast.LENGTH_LONG).show());
+
+                } catch(MegaLoginException e) {
+                    System.err.println("Error de login: " + e.getMessage());
+                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
+                            "Error de login: " + e.getMessage(), Toast.LENGTH_LONG).show());
+
+                } catch (MegaException e) {
+                    System.err.println("Error MEGA: " + e.getMessage());
+                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
+                            "Error MEGA: " + e.getMessage(), Toast.LENGTH_LONG).show());
+
+                }
                 startActivity(intent);
             }
         });
@@ -131,127 +153,29 @@ public class ViewPdfActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Metodo que se ejecuta para subir el PDF al directorio en la red local.
-     *
-     * @param file Archivo a subir
-     * @param username Nombre de usuario
-     * @param password Contraseña
-     */
-    private void uploadPdf(File file, String username, String password) {
-        new Thread(() -> {
-            try {
-                Config.setProperty("jcifs.smb.client.disablePlainTextPasswords",
-                        "false");
-                Config.setProperty("jcifs.smb.client.connectTimeout", "10000");
-                Config.setProperty("jcifs.smb.client.responseTimeout", "10000");
-                Config.setProperty("jcifs.smb.client.soTimeout", "10000");
-
-                String baseDir = "smb://" + username + ":" + password +
-                        "@192.168.1.133" +
-                        "/sethlans_administracion/R - CLOUD/DRIVE/IT/Recepciones/";
-                SmbFile smbFile = new SmbFile(baseDir);
-
-                if (!smbFile.exists()) {
-                    smbFile.mkdirs();
-                }
-
-                int folderNumber = 1;
-                while (true) {
-                    @SuppressLint("DefaultLocale")
-                    SmbFile folder = new SmbFile(baseDir +
-                            String.format("%04d", folderNumber) + "/");
-                    if (!folder.exists()) {
-                        folder.mkdirs();
-                        break;
-                    }
-                    folderNumber++;
-                }
-
+    private String createRemoteFolders(String remoteBasePath, MegaSession session) {
+        String remotePath = remoteBasePath;
+        try {
+            int folderNumber = 1;
+            while(true) {
                 @SuppressLint("DefaultLocale")
-                String dirPath = baseDir + String.format("%04d", folderNumber) + "/";
-                String destPath = dirPath + file.getName();
-
-                SmbFileOutputStream out = new SmbFileOutputStream(new SmbFile(destPath));
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    Files.copy(file.toPath(), out);
+                String folderPath = remotePath + "/" + String.format("%04d", folderNumber);
+                String lsOutput = session.ls(folderPath).toString();
+                if(lsOutput.contains("No such file or directory")) {
+                    session.makeDirectory(folderPath);
+                    remotePath = folderPath;
+                    break;
                 }
-                out.close();
-
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(ViewPdfActivity.this,
-                                "PDF guardado.", Toast.LENGTH_LONG).show();
-                        Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
-                        intent.putExtra("directorio", dirPath);
-                        startActivity(intent);
-                    }
-                });
-            } catch (Exception e) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(ViewPdfActivity.this,
-                                "Error al guardar el PDF: " + e.getMessage(),
-                                Toast.LENGTH_LONG).show();
-                    }
-                });
+                folderNumber++;
             }
-        }).start();
-    }
+            return remotePath;
 
-    /**
-     * Metodo que se ejecuta para subir el PDF localmente.
-     *
-     * @param file Archivo a subir
-     */
-    @SuppressLint("DefaultLocale")
-    private void uploadPdfLocal(File file) {
-        new Thread(() -> {
-            try {
-                String baseDir = "storage/emulated/0/RECEPCIONES";
-                File baseDirFile = new File(baseDir);
-                if(!baseDirFile.exists()) {
-                    baseDirFile.mkdirs();
-                }
-
-                int folderNumber = 1;
-                File dirFile;
-                while(true) {
-                    dirFile = new File(baseDir + String.format("%04d", folderNumber) + "/");
-                    if(!dirFile.exists()) {
-                        dirFile.mkdirs();
-                        break;
-                    }
-                    folderNumber++;
-                }
-                String dirPath = dirFile.getPath() + "/" + file.getName();
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    Files.copy(file.toPath(), new File(dirPath).toPath());
-                }
-
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(ViewPdfActivity.this,
-                                "PDF guardado localmente.", Toast.LENGTH_LONG).show();
-                        Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
-                        intent.putExtra("directorio", dirPath);
-                        startActivity(intent);
-                    }
-                });
-            } catch(Exception e) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(ViewPdfActivity.this,
-                                "Error al guardar el PDF localmente: " + e.getMessage(),
-                                Toast.LENGTH_LONG).show();
-                    }
-                });
-            }
-        }).start();
+        } catch(MegaException e) {
+            Toast.makeText(ViewPdfActivity.this,
+                    "Error al crear las carpetas. " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+            return remoteBasePath;
+        }
     }
 
     /**
