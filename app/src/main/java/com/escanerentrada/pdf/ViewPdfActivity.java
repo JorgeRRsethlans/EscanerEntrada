@@ -7,7 +7,6 @@ import android.graphics.pdf.PdfRenderer;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.text.InputFilter;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -18,14 +17,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.escanerentrada.R;
 import com.escanerentrada.camera.photos.PhotosActivity;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-
-import io.github.eliux.mega.Mega;
-import io.github.eliux.mega.MegaSession;
-import io.github.eliux.mega.auth.MegaAuthCredentials;
-import io.github.eliux.mega.error.MegaException;
-import io.github.eliux.mega.error.MegaLoginException;
+import java.io.InputStreamReader;
 
 
 /**
@@ -59,7 +54,7 @@ public class ViewPdfActivity extends AppCompatActivity {
         txtUsuario = findViewById(R.id.txtUsuario);
         txtContrasena = findViewById(R.id.txtContrasena);
         txtContrasena.setFilters(new InputFilter[] {
-                new InputFilter.LengthFilter(10)
+                new InputFilter.LengthFilter(25)
         });
 
         String filepath = getIntent().getStringExtra("stringextra");
@@ -81,54 +76,42 @@ public class ViewPdfActivity extends AppCompatActivity {
 
         btnCancelar.setOnClickListener(view -> finish());
 
-        credentialManager = new CredentialManager(this);
+        credentialManager = new CredentialManager(ViewPdfActivity.this);
         if(!credentialManager.isFirstRun()) {
             String[] credentials = credentialManager.loadCredentials();
             txtUsuario.setText(credentials[0]);
             txtContrasena.setText(credentials[1]);
         }
 
-        btnContinuar.setOnClickListener(new View.OnClickListener() {
-            @SuppressLint("NewApi")
-            @Override
-            public void onClick(View view) {
-                String filepath = getIntent().getStringExtra("stringextra");
-                assert filepath != null;
-                File file = new File(filepath);
+        btnContinuar.setOnClickListener(view -> {
+            String filepath1 = getIntent().getStringExtra("stringextra");
+            assert filepath1 != null;
+            File file = new File(filepath1);
 
-                String username = txtUsuario.getText().toString();
-                String password = txtContrasena.getText().toString();
-                String remoteBasePath = "/SETHLANS/ENTRADAS";
+            String username = txtUsuario.getText().toString();
+            String password = txtContrasena.getText().toString();
+            String remoteBasePath = "/Root/Incoming Shares/SETHLANS/ENTRADAS";
 
-                credentialManager.saveCredentials(username, password);
+            credentialManager.saveCredentials(username, password);
 
-                Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
+            Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
 
-                try {
-                    MegaSession session = Mega.login(new MegaAuthCredentials(username, password));
-                    String remotePath = createRemoteFolders(remoteBasePath, session);
-                    session.uploadFile(file.getAbsolutePath(), remotePath)
-                            .createRemotePathIfNotPresent().run();
+            try {
+                executeMEGAcmd("login", username, password);
+                String remotePath = createRemoteFolders(remoteBasePath);
+                executeMEGAcmd("put", "--path", remotePath, file.getAbsolutePath());
 
-                    intent.putExtra("remotePath", remotePath);
-                    intent.putExtra("username", username);
-                    intent.putExtra("password", password);
+                intent.putExtra("remotePath", remotePath);
 
-                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
-                            "PDF guardado.", Toast.LENGTH_LONG).show());
+                runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
+                        "PDF guardado.", Toast.LENGTH_LONG).show());
 
-                } catch(MegaLoginException e) {
-                    System.err.println("Error de login: " + e.getMessage());
-                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
-                            "Error de login: " + e.getMessage(), Toast.LENGTH_LONG).show());
-
-                } catch (MegaException e) {
-                    System.err.println("Error MEGA: " + e.getMessage());
-                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
-                            "Error MEGA: " + e.getMessage(), Toast.LENGTH_LONG).show());
-
-                }
                 startActivity(intent);
+
+            } catch(Exception e) {
+                Toast.makeText(ViewPdfActivity.this,
+                        "Error al subir el PDF. " + e.getMessage(),
+                        Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -153,24 +136,79 @@ public class ViewPdfActivity extends AppCompatActivity {
         }
     }
 
-    private String createRemoteFolders(String remoteBasePath, MegaSession session) {
+    /**
+     * Método que se ejecuta para ejecutar el comando MEGAcmd.
+     *
+     * @param commands Comandos a ejecutar
+     */
+    private void executeMEGAcmd(String... commands) {
+        try {
+            String executablePath = getFilesDir() + "/MEGAcmd-Linux-aarch64";
+            String[] fullCommand = new String[commands.length + 1];
+            fullCommand[0] = executablePath;
+            System.arraycopy(commands, 0, fullCommand, 1, commands.length);
+            Process process = Runtime.getRuntime().exec(fullCommand);
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process
+                    .getInputStream()));
+            String line;
+            while((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+
+            int exitCode = process.waitFor();
+            if(exitCode != 0) {
+                Toast.makeText(this,
+                        "MEGAcmd exited with code: " + exitCode,
+                        Toast.LENGTH_LONG).show();
+            }
+        } catch(IOException | InterruptedException e) {
+            Toast.makeText(this,
+                    "Error al ejecutar MEGAcmd: " + e.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    /**
+     * Método que se ejecuta para crear las carpetas en el servidor MEGA.
+     *
+     * @param remoteBasePath Ruta base de las carpetas a crear
+     * @return Ruta de las carpetas creadas
+     */
+    private String createRemoteFolders(String remoteBasePath) {
         String remotePath = remoteBasePath;
         try {
             int folderNumber = 1;
-            while(true) {
+            while (true) {
                 @SuppressLint("DefaultLocale")
                 String folderPath = remotePath + "/" + String.format("%04d", folderNumber);
-                String lsOutput = session.ls(folderPath).toString();
-                if(lsOutput.contains("No such file or directory")) {
-                    session.makeDirectory(folderPath);
+
+                executeMEGAcmd("ls", folderPath);
+
+                Process process = Runtime.getRuntime().exec(new String[]{getFilesDir()
+                        + "/MEGAcmd-Linux-aarch64", "ls", folderPath});
+                BufferedReader reader = new BufferedReader(new InputStreamReader(process
+                        .getInputStream()));
+                String line;
+                boolean folderExists = false;
+                while ((line = reader.readLine()) != null) {
+                    if (!line.contains("No such file or directory")) {
+                        folderExists = true;
+                        break;
+                    }
+                }
+
+                if (!folderExists) {
+                    executeMEGAcmd("mkdir", folderPath);
                     remotePath = folderPath;
                     break;
                 }
+
                 folderNumber++;
             }
             return remotePath;
 
-        } catch(MegaException e) {
+        } catch (Exception e) {
             Toast.makeText(ViewPdfActivity.this,
                     "Error al crear las carpetas. " + e.getMessage(),
                     Toast.LENGTH_LONG).show();

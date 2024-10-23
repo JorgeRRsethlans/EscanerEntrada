@@ -1,6 +1,7 @@
 package com.escanerentrada;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -23,6 +24,12 @@ import com.escanerentrada.camera.barcode.ScannerActivity;
 import com.escanerentrada.pdf.PdfCreator;
 import com.escanerentrada.pdf.ViewPdfActivity;
 import com.google.android.material.snackbar.Snackbar;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 
 /**
  * Clase principal que da acceso a escanear un código de barras o a introducirlo manualmente.
@@ -53,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        copyExecutableToInternalStorage(this);
 
         //Asignamos los elementos creados en los layouts para que puedan ser usados.
         Button btnEscanear = findViewById(R.id.btnEscanear);
@@ -180,6 +189,34 @@ public class MainActivity extends AppCompatActivity {
                     "No se encuentra la empresa relacionada con este codigo",
                     Toast.LENGTH_SHORT).show();
             return "Desconocida";
+        }
+    }
+
+    /**
+     * Método que copia el ejecutable de Mega a la memoria interna de la aplicación.
+     *
+     * @param context Contexto de la actividad
+     */
+    private void copyExecutableToInternalStorage(Context context) {
+        String nombreExecutable = "megacmd";
+
+        try (InputStream inputStream = context.getAssets().open(nombreExecutable);
+             OutputStream outputStream = context.openFileOutput(nombreExecutable,
+                     Context.MODE_PRIVATE)) {
+
+            byte[] buffer = new byte[8192];
+            int len;
+            while ((len = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, len);
+            }
+
+            File archivoExecutable = new File(context.getFilesDir(), nombreExecutable);
+            archivoExecutable.setExecutable(true);
+
+        } catch (IOException e) {
+            Toast.makeText(this,
+                    "Error al copiar el ejecutable: " + e.getMessage(),
+                    Toast.LENGTH_SHORT).show();
         }
     }
 }
