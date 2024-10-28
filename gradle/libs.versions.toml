@@ -1,7 +1,7 @@
 [versions]
 barcodeScanning = "17.3.0"
 cameraCore = "1.3.4"
-jcifs = "1.3.17"
+jsch = "0.1.55"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
@@ -9,8 +9,7 @@ appcompat = "1.7.0"
 material = "1.12.0"
 activity = "1.9.3"
 constraintlayout = "2.1.4"
-megacmd4jVersion = "1.6.11"
-okhttp = "4.9.3"
+okhttp = "4.12.0"
 
 [libraries]
 barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "barcodeScanning" }
@@ -18,8 +17,7 @@ camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cam
 camera-core = { module = "androidx.camera:camera-core", version.ref = "cameraCore" }
 camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "cameraCore" }
 camera-view = { module = "androidx.camera:camera-view", version.ref = "cameraCore" }
-eliux-megacmd4j = { module = "com.github.eliux:megacmd4j", version.ref = "megacmd4jVersion" }
-jcifs = { module = "jcifs:jcifs", version.ref = "jcifs" }
+jcsh = { module = "com.jcraft:jsch", version.ref = "jsch" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

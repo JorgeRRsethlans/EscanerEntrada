@@ -18,15 +18,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.escanerentrada.R;
 import com.escanerentrada.camera.photos.PhotosActivity;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
-import io.github.eliux.mega.Mega;
-import io.github.eliux.mega.MegaSession;
-import io.github.eliux.mega.auth.MegaAuthCredentials;
-import io.github.eliux.mega.error.MegaException;
-import io.github.eliux.mega.error.MegaLoginException;
-
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelExec;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 
 /**
  * Clase que se encarga de mostrar el PDF.
@@ -98,17 +100,22 @@ public class ViewPdfActivity extends AppCompatActivity {
 
                 String username = txtUsuario.getText().toString();
                 String password = txtContrasena.getText().toString();
-                String remoteBasePath = "/SETHLANS/ENTRADAS";
+                String remoteBasePath = "/var/www/vhosts" +
+                        "/romantic-engelbart.212-227-226-16.plesk.page/Recepciones";
 
                 credentialManager.saveCredentials(username, password);
 
                 Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
 
                 try {
-                    MegaSession session = Mega.login(new MegaAuthCredentials(username, password));
+                    JSch jsch = new JSch();
+                    Session session = jsch.getSession(username,
+                            "romantic-engelbart.212-227-226-16.plesk.page", 22);
+                    session.setPassword(password);
+                    session.setConfig("StrictHostKeyChecking", "no");
+                    session.connect();
                     String remotePath = createRemoteFolders(remoteBasePath, session);
-                    session.uploadFile(file.getAbsolutePath(), remotePath)
-                            .createRemotePathIfNotPresent().run();
+                    uploadFile(file.getAbsolutePath(), remotePath, session);
 
                     intent.putExtra("remotePath", remotePath);
                     intent.putExtra("username", username);
@@ -117,15 +124,10 @@ public class ViewPdfActivity extends AppCompatActivity {
                     runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
                             "PDF guardado.", Toast.LENGTH_LONG).show());
 
-                } catch(MegaLoginException e) {
-                    System.err.println("Error de login: " + e.getMessage());
+                } catch(Exception e) {
                     runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
-                            "Error de login: " + e.getMessage(), Toast.LENGTH_LONG).show());
-
-                } catch (MegaException e) {
-                    System.err.println("Error MEGA: " + e.getMessage());
-                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
-                            "Error MEGA: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                            "Error de SSH: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show());
 
                 }
                 startActivity(intent);
@@ -153,29 +155,76 @@ public class ViewPdfActivity extends AppCompatActivity {
         }
     }
 
-    private String createRemoteFolders(String remoteBasePath, MegaSession session) {
-        String remotePath = remoteBasePath;
-        try {
-            int folderNumber = 1;
-            while(true) {
-                @SuppressLint("DefaultLocale")
-                String folderPath = remotePath + "/" + String.format("%04d", folderNumber);
-                String lsOutput = session.ls(folderPath).toString();
-                if(lsOutput.contains("No such file or directory")) {
-                    session.makeDirectory(folderPath);
-                    remotePath = folderPath;
-                    break;
-                }
-                folderNumber++;
-            }
-            return remotePath;
+    /**
+     * Método que se ejecuta para crear las carpetas en el servidor.
+     *
+     * @param remoteBasePath Ruta base de la carpeta
+     * @param session Sesión SSH
+     * @return Ruta de la carpeta creada
+     * @throws Exception Excepción en caso de error
+     */
+    private String createRemoteFolders(String remoteBasePath, Session session) throws Exception {
+        String folderName = String.valueOf(findNextAvailableFolderNumber(remoteBasePath, session));
+        Channel channel = session.openChannel("exec");
+        String remotePath = remoteBasePath + "/" + folderName;
+        ((ChannelExec) channel).setCommand("mkdir -p \"" + remotePath  + "\"");
+        channel.connect();
+        channel.disconnect();
+        return remotePath;
+    }
 
-        } catch(MegaException e) {
-            Toast.makeText(ViewPdfActivity.this,
-                    "Error al crear las carpetas. " + e.getMessage(),
-                    Toast.LENGTH_LONG).show();
-            return remoteBasePath;
+    /**
+     * Método que se ejecuta para saber que carpeta crear en el servidor.
+     *
+     * @param remoteBasePath Ruta base de la carpeta
+     * @param session Sesión SSH
+     * @return Número de carpeta a crear
+     * @throws Exception Excepción en caso de error
+     */
+    private int findNextAvailableFolderNumber(String remoteBasePath, Session session)
+            throws Exception {
+        int counter = 1;
+        while(checkIfFolderExists(remoteBasePath + "/" + counter, session)) {
+            counter++;
         }
+        return counter;
+    }
+
+    /**
+     * Método que se ejecuta para verificar si una carpeta existe en el servidor.
+     *
+     * @param fullFolderPath Ruta completa de la carpeta
+     * @param session Sesión SSH
+     * @return True si la carpeta existe, false en caso contrario
+     * @throws Exception Excepción en caso de error
+     */
+    private boolean checkIfFolderExists(String fullFolderPath, Session session) throws Exception {
+        Channel channel = session.openChannel("exec");
+        ((ChannelExec) channel).setCommand("[ -d \"" + fullFolderPath + "\" ] && echo \"exists\"");
+        channel.setInputStream(null);
+
+        InputStream in = channel.getInputStream();
+        channel.connect();
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (line.trim().equals("exists")) {
+                channel.disconnect();
+                return true;
+            }
+        }
+
+        channel.disconnect();
+        return false;
+    }
+
+    private void uploadFile(String localFilePath, String remoteFolderPath, Session session)
+            throws Exception {
+        ChannelSftp sftpChannel = (ChannelSftp) session.openChannel("sftp");
+        sftpChannel.connect();
+        sftpChannel.put(localFilePath, remoteFolderPath + "/etiqueta.pdf");
+        sftpChannel.disconnect();
     }
 
     /**

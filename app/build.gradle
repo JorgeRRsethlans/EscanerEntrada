@@ -48,7 +48,5 @@ dependencies {
 
     implementation libs.okhttp
 
-    implementation libs.jcifs
-
-    implementation libs.eliux.megacmd4j
+    implementation libs.jcsh
 }

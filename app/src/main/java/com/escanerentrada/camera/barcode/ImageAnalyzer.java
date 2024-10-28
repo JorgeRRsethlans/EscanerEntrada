@@ -52,13 +52,13 @@ public class ImageAnalyzer  implements ImageAnalysis.Analyzer{
                     .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS).build();
             BarcodeScanner scanner = BarcodeScanning.getClient(options);
 
-            Task<List<Barcode>> result = scanner.process(image).addOnSuccessListener(barcodes -> {
-                for(Barcode barcode : barcodes) {
-                    codigo = barcode.getRawValue();
-                    listener.onBarcodeDetected(codigo);
-                }
-            }).addOnFailureListener(e -> Toast.makeText(context,
-                    "Error al escanear el código de barras", Toast.LENGTH_SHORT).show())
+            scanner.process(image).addOnSuccessListener(barcodes -> {
+                        for (Barcode barcode : barcodes) {
+                            codigo = barcode.getRawValue();
+                            listener.onBarcodeDetected(codigo);
+                        }
+                    }).addOnFailureListener(e -> Toast.makeText(context,
+                            "Error al escanear el código de barras", Toast.LENGTH_SHORT).show())
                     .addOnCompleteListener(task -> imageProxy.close());
         }
     }
