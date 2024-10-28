@@ -16,19 +16,13 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.escanerentrada.R;
-import com.escanerentrada.camera.photos.PhotosActivity;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 
-import com.jcraft.jsch.Channel;
-import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.ChannelSftp;
-import com.jcraft.jsch.JSch;
-import com.jcraft.jsch.Session;
+import com.escanerentrada.camera.photos.PhotosActivity;
+import com.escanerentrada.ssh.SSHHelper;
+import com.escanerentrada.ssh.SSHTask;
 
 /**
  * Clase que se encarga de mostrar el PDF.
@@ -44,6 +38,8 @@ public class ViewPdfActivity extends AppCompatActivity {
     private ImageView imageView;
     private EditText txtUsuario;
     private EditText txtContrasena;
+
+    private String username, password;
 
     /**
      * Método que se ejecuta cuando se crea la actividad.
@@ -98,39 +94,39 @@ public class ViewPdfActivity extends AppCompatActivity {
                 assert filepath != null;
                 File file = new File(filepath);
 
-                String username = txtUsuario.getText().toString();
-                String password = txtContrasena.getText().toString();
+                username = txtUsuario.getText().toString();
+                password = txtContrasena.getText().toString();
                 String remoteBasePath = "/var/www/vhosts" +
                         "/romantic-engelbart.212-227-226-16.plesk.page/Recepciones";
 
                 credentialManager.saveCredentials(username, password);
 
-                Intent intent = new Intent(ViewPdfActivity.this, PhotosActivity.class);
+                Runnable sshOperations = () -> {
+                    try {
+                        SSHHelper sshHelper = new SSHHelper(username, password,
+                                "romantic-engelbart.212-227-226-16.plesk.page", 22);
+                        String remotePath = sshHelper.createRemoteFolders(remoteBasePath);
+                        sshHelper.uploadFile(file.getAbsolutePath(), remotePath);
 
-                try {
-                    JSch jsch = new JSch();
-                    Session session = jsch.getSession(username,
-                            "romantic-engelbart.212-227-226-16.plesk.page", 22);
-                    session.setPassword(password);
-                    session.setConfig("StrictHostKeyChecking", "no");
-                    session.connect();
-                    String remotePath = createRemoteFolders(remoteBasePath, session);
-                    uploadFile(file.getAbsolutePath(), remotePath, session);
+                        runOnUiThread(() -> {
+                            Toast.makeText(ViewPdfActivity.this, "PDF guardado.",
+                                    Toast.LENGTH_LONG).show();
 
-                    intent.putExtra("remotePath", remotePath);
-                    intent.putExtra("username", username);
-                    intent.putExtra("password", password);
+                            Intent intent = new Intent(ViewPdfActivity.this,
+                                    PhotosActivity.class);
+                            intent.putExtra("remotePath", remotePath);
+                            intent.putExtra("username", username);
+                            intent.putExtra("password", password);
+                            startActivity(intent);
+                        });
+                    } catch (Exception e) {
+                        runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
+                                "Error de SSH: " + e.getMessage(), Toast.LENGTH_LONG).show());
+                    }
+                };
 
-                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
-                            "PDF guardado.", Toast.LENGTH_LONG).show());
-
-                } catch(Exception e) {
-                    runOnUiThread(() -> Toast.makeText(ViewPdfActivity.this,
-                            "Error de SSH: " + e.getMessage(),
-                            Toast.LENGTH_LONG).show());
-
-                }
-                startActivity(intent);
+                new SSHTask(ViewPdfActivity.this, sshOperations)
+                        .execute();
             }
         });
     }
@@ -153,78 +149,6 @@ public class ViewPdfActivity extends AppCompatActivity {
             imageView.setImageBitmap(bitmap);
             currentPageIndex = index;
         }
-    }
-
-    /**
-     * Método que se ejecuta para crear las carpetas en el servidor.
-     *
-     * @param remoteBasePath Ruta base de la carpeta
-     * @param session Sesión SSH
-     * @return Ruta de la carpeta creada
-     * @throws Exception Excepción en caso de error
-     */
-    private String createRemoteFolders(String remoteBasePath, Session session) throws Exception {
-        String folderName = String.valueOf(findNextAvailableFolderNumber(remoteBasePath, session));
-        Channel channel = session.openChannel("exec");
-        String remotePath = remoteBasePath + "/" + folderName;
-        ((ChannelExec) channel).setCommand("mkdir -p \"" + remotePath  + "\"");
-        channel.connect();
-        channel.disconnect();
-        return remotePath;
-    }
-
-    /**
-     * Método que se ejecuta para saber que carpeta crear en el servidor.
-     *
-     * @param remoteBasePath Ruta base de la carpeta
-     * @param session Sesión SSH
-     * @return Número de carpeta a crear
-     * @throws Exception Excepción en caso de error
-     */
-    private int findNextAvailableFolderNumber(String remoteBasePath, Session session)
-            throws Exception {
-        int counter = 1;
-        while(checkIfFolderExists(remoteBasePath + "/" + counter, session)) {
-            counter++;
-        }
-        return counter;
-    }
-
-    /**
-     * Método que se ejecuta para verificar si una carpeta existe en el servidor.
-     *
-     * @param fullFolderPath Ruta completa de la carpeta
-     * @param session Sesión SSH
-     * @return True si la carpeta existe, false en caso contrario
-     * @throws Exception Excepción en caso de error
-     */
-    private boolean checkIfFolderExists(String fullFolderPath, Session session) throws Exception {
-        Channel channel = session.openChannel("exec");
-        ((ChannelExec) channel).setCommand("[ -d \"" + fullFolderPath + "\" ] && echo \"exists\"");
-        channel.setInputStream(null);
-
-        InputStream in = channel.getInputStream();
-        channel.connect();
-
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-        String line;
-        while ((line = reader.readLine()) != null) {
-            if (line.trim().equals("exists")) {
-                channel.disconnect();
-                return true;
-            }
-        }
-
-        channel.disconnect();
-        return false;
-    }
-
-    private void uploadFile(String localFilePath, String remoteFolderPath, Session session)
-            throws Exception {
-        ChannelSftp sftpChannel = (ChannelSftp) session.openChannel("sftp");
-        sftpChannel.connect();
-        sftpChannel.put(localFilePath, remoteFolderPath + "/etiqueta.pdf");
-        sftpChannel.disconnect();
     }
 
     /**
