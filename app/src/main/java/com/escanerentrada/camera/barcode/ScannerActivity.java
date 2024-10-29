@@ -1,7 +1,9 @@
 package com.escanerentrada.camera.barcode;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.Toast;
@@ -81,20 +83,25 @@ public class ScannerActivity extends BaseCameraActivity implements BarcodeListen
      */
     @Override
     public void onBarcodeDetected(String barcode) {
+        Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator != null && vibrator.hasVibrator()) {
+            vibrator.vibrate(150);
+        }
         runOnUiThread(() -> {
             Intent intent = new Intent();
             intent.putExtra("codigo", barcode);
             setResult(RESULT_OK, intent);
-            ProcessCameraProvider cameraProvider = null;
-            try {
-                cameraProvider = ProcessCameraProvider
-                        .getInstance(this).get();
-                cameraProvider.unbind(imageAnalysis);
-            } catch (ExecutionException | InterruptedException e) {
-                Toast.makeText(this,
-                        "Error al cerrar la camara", Toast.LENGTH_SHORT).show();
-            }
-            finish();
         });
+
+        try {
+            cameraProvider = ProcessCameraProvider
+                    .getInstance(getApplicationContext()).get();
+            cameraProvider.unbindAll();
+        } catch (ExecutionException | InterruptedException e) {
+            Toast.makeText(this,
+                    "Error al cerrar la camara.", Toast.LENGTH_SHORT).show();
+        } finally {
+            finish();
+        }
     }
 }

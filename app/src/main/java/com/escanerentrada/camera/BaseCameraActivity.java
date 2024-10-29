@@ -3,7 +3,7 @@ package com.escanerentrada.camera;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
@@ -25,6 +25,8 @@ import java.util.concurrent.Executors;
 public abstract class BaseCameraActivity extends AppCompatActivity {
 
     protected ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
+    protected ProcessCameraProvider cameraProvider;
+    protected CameraSelector cameraSelector;
     protected ExecutorService cameraExecutor;
     protected PreviewView previewView;
     protected Preview preview;
@@ -51,7 +53,8 @@ public abstract class BaseCameraActivity extends AppCompatActivity {
         if (allPermissionsGranted()) {
             startCamera();
         } else {
-            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, PERMISSIONS_REQUEST_CODE);
+            ActivityCompat.requestPermissions(this,
+                    REQUIRED_PERMISSIONS, PERMISSIONS_REQUEST_CODE);
         }
     }
 
@@ -59,44 +62,26 @@ public abstract class BaseCameraActivity extends AppCompatActivity {
      * Método que se ejecuta para iniciar la cámara.
      */
     private void startCamera() {
+        cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
         cameraProviderFuture = ProcessCameraProvider.getInstance(this);
         cameraProviderFuture.addListener(() -> {
             try {
-                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                preview = new Preview.Builder()
-                        .setTargetRotation(previewView.getDisplay().getRotation()).build();
-                preview.setSurfaceProvider(previewView.getSurfaceProvider());
-                bindPreview(cameraProvider);
-
+                cameraProvider = cameraProviderFuture.get();
+                if (previewView.getDisplay() != null) {
+                    preview = new Preview.Builder()
+                            .setTargetRotation(previewView.getDisplay().getRotation()).build();
+                    preview.setSurfaceProvider(previewView.getSurfaceProvider());
+                } else {
+                    cameraSelector = null;
+                    cameraProviderFuture = null;
+                    cameraProvider = null;
+                    previewView.postDelayed(this::startCamera, 500);
+                }
                 imageCapture = new ImageCapture.Builder().build();
-                CameraSelector cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
-                cameraProvider.unbindAll();
-                cameraProvider.bindToLifecycle(this,
-                        cameraSelector, preview, imageCapture);
-
-            } catch (Exception e) {
-                Log.e("BaseCameraActivity", "Error al vincular el caso de uso", e);
-            }
+                cameraProvider.bindToLifecycle(this, cameraSelector,
+                        preview, imageCapture);
+            } catch (Exception ignored) {}
         }, ContextCompat.getMainExecutor(this));
-    }
-
-    /**
-     * Método que se ejecuta para vincular el caso de uso.
-     *
-     * @param cameraProvider Proveedor de la cámara
-     */
-    protected void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
-        CameraSelector cameraSelector = new CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                .build();
-
-        try {
-            cameraProvider.unbindAll();
-            cameraProvider.bindToLifecycle(this, cameraSelector, preview);
-            preview.setSurfaceProvider(previewView.getSurfaceProvider());
-        } catch (Exception exc) {
-            Log.e("BaseCameraActivity", "Error al vincular el caso de uso", exc);
-        }
     }
 
     /**
@@ -107,13 +92,13 @@ public abstract class BaseCameraActivity extends AppCompatActivity {
      * @param grantResults resultados de la solicitud
      */
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == PERMISSIONS_REQUEST_CODE) {
             if (allPermissionsGranted()) {
                 startCamera();
             } else {
-                Log.e("BaseCameraActivity", "Permisos no otorgados");
                 finish();
             }
         }
@@ -134,12 +119,30 @@ public abstract class BaseCameraActivity extends AppCompatActivity {
     }
 
     /**
+     * Método que se ejecuta cuando se reanuda la actividad.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        startCamera();
+    }
+
+    /**
+     * Método que se ejecuta cuando se pausa la actividad.
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        cameraProvider.unbindAll();
+    }
+
+    /**
      * Método que se ejecuta cuando se destruye la actividad.
      */
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        cameraExecutor.shutdown();
+        cameraProvider.unbindAll();
     }
 
     /**

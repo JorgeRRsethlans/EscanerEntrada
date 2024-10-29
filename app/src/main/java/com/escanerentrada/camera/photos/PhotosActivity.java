@@ -1,6 +1,7 @@
 package com.escanerentrada.camera.photos;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
@@ -10,12 +11,9 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
 import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.ImageProxy;
-import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.core.content.ContextCompat;
 
 import com.escanerentrada.R;
 import com.escanerentrada.camera.BaseCameraActivity;
@@ -34,8 +32,6 @@ public class PhotosActivity extends BaseCameraActivity {
     private String remotePath;
     private String username, password;
 
-    private boolean cameraReady = false;
-
     /**
      * Método que se ejecuta cuando se crea la actividad.
      *
@@ -51,7 +47,14 @@ public class PhotosActivity extends BaseCameraActivity {
 
         btnAtras.setOnClickListener(view -> finish());
         btnFoto.setOnClickListener(view -> takePhotoAndUpload());
-        btnAceptar.setOnClickListener(view -> finish());
+        btnAceptar.setOnClickListener(view -> {
+            Intent i = getBaseContext().getPackageManager()
+                    .getLaunchIntentForPackage(getBaseContext().getPackageName());
+            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+            finish();
+        });
 
         remotePath = getIntent().getStringExtra("remotePath");
         username = getIntent().getStringExtra("username");
@@ -61,7 +64,6 @@ public class PhotosActivity extends BaseCameraActivity {
             Toast.makeText(this, "Directorio remoto no válido", Toast.LENGTH_SHORT).show();
             finish();
         }
-        restartCamera();
     }
 
     /**
@@ -70,9 +72,7 @@ public class PhotosActivity extends BaseCameraActivity {
      * @return ID del layout
      */
     @Override
-    protected int getLayoutId() {
-        return R.layout.activity_photos;
-    }
+    protected int getLayoutId() { return R.layout.activity_photos; }
 
     /**
      * Método que se ejecuta para obtener el ID del layout.
@@ -80,9 +80,7 @@ public class PhotosActivity extends BaseCameraActivity {
      * @return ID del layout
      */
     @Override
-    protected int getPreviewViewId() {
-        return R.id.previewView;
-    }
+    protected int getPreviewViewId() { return R.id.previewView; }
 
     /**
      * Método que se ejecuta para tomar una foto y subirla al servidor.
@@ -92,54 +90,46 @@ public class PhotosActivity extends BaseCameraActivity {
         mediaPlayer.start();
         Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         if (vibrator != null && vibrator.hasVibrator()) {
-            vibrator.vibrate(100);
+            vibrator.vibrate(150);
         }
-        if (cameraReady) {
-            imageCapture.takePicture(executor, new ImageCapture.OnImageCapturedCallback() {
-                @Override
-                public void onCaptureSuccess(@NonNull ImageProxy image) {
-                    executor.execute(() -> {
-                        Bitmap bitmap = imageProxyToBitmap(image);
-                        image.close();
+        imageCapture.takePicture(executor, new ImageCapture.OnImageCapturedCallback() {
+            @Override
+            public void onCaptureSuccess(@NonNull ImageProxy image) {
+                executor.execute(() -> {
+                    Bitmap bitmap = imageProxyToBitmap(image);
+                    image.close();
 
-                        Runnable uploadTask = () -> {
-                            try {
-                                SSHHelper sshHelper = new SSHHelper(username, password,
-                                        "romantic-engelbart.212-227-226-16.plesk.page", 22);
+                    Runnable uploadTask = () -> {
+                        try {
+                            SSHHelper sshHelper = new SSHHelper(username, password,
+                                    "romantic-engelbart.212-227-226-16.plesk.page", 22);
 
-                                String uniqueKey = generateUniqueKey();
-                                String remoteFilePath = remotePath + "/" + uniqueKey + ".jpg";
+                            String uniqueKey = generateUniqueKey();
+                            String remoteFilePath = remotePath + "/" + uniqueKey + ".jpg";
 
-                                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-                                byte[] bitmapData = bos.toByteArray();
+                            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
+                            byte[] bitmapData = bos.toByteArray();
 
-                                sshHelper.uploadImage(bitmapData, remoteFilePath);
-                            } catch (Exception e) {
-                                runOnUiThread(() -> Toast.makeText(PhotosActivity.this,
-                                        "Error al subir la foto: " + e.getMessage(),
-                                        Toast.LENGTH_SHORT).show());
-                            }
-                        };
+                            sshHelper.uploadImage(bitmapData, remoteFilePath);
+                        } catch (Exception e) {
+                            runOnUiThread(() -> Toast.makeText(PhotosActivity.this,
+                                    "Error al subir la foto: " + e.getMessage(),
+                                    Toast.LENGTH_SHORT).show());
+                        }
+                    };
 
-                        new SSHTask(PhotosActivity.this, uploadTask).execute();
+                    new SSHTask(PhotosActivity.this, uploadTask).execute();
+                });
+            }
 
-                        imageCapture = new ImageCapture.Builder().build();
-                    });
-                }
-
-                @Override
-                public void onError(@NonNull ImageCaptureException exception) {
-                    runOnUiThread(() -> Toast.makeText(PhotosActivity.this,
-                            "Error al tomar la foto: " + exception.getMessage(),
-                            Toast.LENGTH_SHORT).show());
-                }
-            });
-        } else {
-            Toast.makeText(PhotosActivity.this,
-                    "La cámara no está lista",
-                    Toast.LENGTH_SHORT).show();
-        }
+            @Override
+            public void onError(@NonNull ImageCaptureException exception) {
+                runOnUiThread(() -> Toast.makeText(PhotosActivity.this,
+                        "Error al tomar la foto: " + exception.getMessage(),
+                        Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     /**
@@ -161,28 +151,5 @@ public class PhotosActivity extends BaseCameraActivity {
      *
      * @return Clave única
      */
-    private String generateUniqueKey() {
-        return UUID.randomUUID().toString();
-    }
-
-    /**
-     * Método que se ejecuta para reiniciar la cámara.
-     */
-    private void restartCamera() {
-        CameraSelector cameraSelector = new CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-        cameraProviderFuture.addListener(() -> {
-            try {
-                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-                cameraProvider.unbindAll();
-                bindPreview(cameraProvider);
-                imageCapture = new ImageCapture.Builder().build();
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
-                cameraReady = true;
-            } catch (Exception e) {
-                Toast.makeText(this, "Error al reiniciar la camara.", Toast.LENGTH_SHORT).show();
-            }
-        }, ContextCompat.getMainExecutor(this));
-    }
+    private String generateUniqueKey() { return UUID.randomUUID().toString(); }
 }
