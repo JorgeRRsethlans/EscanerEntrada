@@ -33,7 +33,7 @@ public class PdfCreator {
         try {
             PDFBoxResourceLoader.init(context);
             PDDocument document = new PDDocument();
-            PDPage page = new PDPage(new PDRectangle(193.548f, 129.032f));
+            PDPage page = new PDPage(new PDRectangle(75f * 2.54f, 49.6f * 2.54f));
             document.addPage(page);
 
             PDPageContentStream contentStream = new PDPageContentStream(document, page);
@@ -41,7 +41,8 @@ public class PdfCreator {
             contentStream.setNonStrokingColor(AWTColor.WHITE);
             contentStream.setStrokingColor(AWTColor.BLACK);
             contentStream.setLineWidth(2f);
-            contentStream.addRect(1.524f, 1.524f, 190.5f, 125.984f);
+            contentStream.addRect(2 * 2.54f, 2 * 2.54f,
+                    71f * 2.54f, 45.6f * 2.54f);
             contentStream.fillAndStroke();
             contentStream.closePath();
 

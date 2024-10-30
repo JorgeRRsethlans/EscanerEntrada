@@ -36,7 +36,13 @@ public class ScannerActivity extends BaseCameraActivity implements BarcodeListen
         super.onCreate(state);
 
         Button btnCancelar = findViewById(R.id.btnCancelar);
-        btnCancelar.setOnClickListener(v -> finish());
+        btnCancelar.setOnClickListener(v -> {
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(50);
+            }
+            finish();
+        });
 
         cameraSelector = new CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK).build();

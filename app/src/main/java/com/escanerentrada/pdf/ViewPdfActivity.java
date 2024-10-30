@@ -1,8 +1,10 @@
 package com.escanerentrada.pdf;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.text.InputFilter;
 import android.view.View;
 import android.widget.Button;
@@ -63,7 +65,13 @@ public class ViewPdfActivity extends AppCompatActivity {
             pdfViewer.loadPdf(filepath, imageView);
         }
 
-        btnCancelar.setOnClickListener(view -> finish());
+        btnCancelar.setOnClickListener(view -> {
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(50);
+            }
+            finish();
+        });
 
         credentialManager = new CredentialManager(this);
         if(!credentialManager.isFirstRun()) {
@@ -76,6 +84,10 @@ public class ViewPdfActivity extends AppCompatActivity {
             @SuppressLint("NewApi")
             @Override
             public void onClick(View view) {
+                Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                if (vibrator != null && vibrator.hasVibrator()) {
+                    vibrator.vibrate(50);
+                }
                 String filepath = getIntent().getStringExtra("stringextra");
                 assert filepath != null;
                 File file = new File(filepath);

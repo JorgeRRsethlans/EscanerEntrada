@@ -47,9 +47,19 @@ public class PhotosActivity extends BaseCameraActivity {
         Button btnFoto = findViewById(R.id.btnFoto);
         Button btnAceptar = findViewById(R.id.btnAceptar);
 
-        btnAtras.setOnClickListener(view -> finish());
+        btnAtras.setOnClickListener(view -> {
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(50);
+            }
+            finish();
+        });
         btnFoto.setOnClickListener(view -> takePhotoAndUpload());
         btnAceptar.setOnClickListener(view -> {
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(50);
+            }
             Intent i = getBaseContext().getPackageManager()
                     .getLaunchIntentForPackage(getBaseContext().getPackageName());
             assert i != null;

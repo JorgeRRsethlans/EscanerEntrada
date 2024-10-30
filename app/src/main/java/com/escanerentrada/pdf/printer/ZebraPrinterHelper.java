@@ -53,7 +53,6 @@ public class ZebraPrinterHelper {
             ZebraPrinter printer = ZebraPrinterFactory.getInstance(connection);
             printer.printImage(getPdfBitmap(pdfFile.getAbsolutePath()),
                     0, 0, 0, 0, false);
-            printer.reset();
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {

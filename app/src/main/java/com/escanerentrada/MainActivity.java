@@ -1,9 +1,11 @@
 package com.escanerentrada;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -57,6 +59,10 @@ public class MainActivity extends AppCompatActivity {
         codigo = findViewById(R.id.codigo);
 
         btnEscanear.setOnClickListener(view -> {
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(50);
+            }
             verificarYPedirPermisosDeCamara();
             if(permisoCamaraConcedido) {
                 escanear();
@@ -64,6 +70,10 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnSiguiente.setOnClickListener(view -> {
+            Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+            if (vibrator != null && vibrator.hasVibrator()) {
+                vibrator.vibrate(50);
+            }
             if(codigo.getText().toString().isEmpty()) {
                 Toast.makeText(MainActivity.this, "No se ha introducido ningún código",
                         Toast.LENGTH_SHORT).show();

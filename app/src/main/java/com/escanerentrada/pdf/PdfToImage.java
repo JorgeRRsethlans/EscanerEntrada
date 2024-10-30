@@ -1,7 +1,6 @@
 package com.escanerentrada.pdf;
 
 import android.graphics.Bitmap;
-import android.widget.Toast;
 
 import com.tom_roush.pdfbox.pdmodel.PDDocument;
 import com.tom_roush.pdfbox.rendering.ImageType;
