@@ -18,7 +18,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.escanerentrada.camera.barcode.BarcodeAnalyzer;
 import com.escanerentrada.camera.barcode.ScannerActivity;
 import com.escanerentrada.pdf.PdfCreator;
 import com.escanerentrada.pdf.ViewPdfActivity;
@@ -35,7 +34,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int CODIGO_PERMISOS_CAMARA = 1, CODIGO_INTENT = 2;
     private boolean permisoCamaraConcedido = false;
-    private final BarcodeAnalyzer barcodeAnalyzer = new BarcodeAnalyzer();
     private EditText codigo;
 
     /**
@@ -54,13 +52,10 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-
-        //Asignamos los elementos creados en los layouts para que puedan ser usados.
         Button btnEscanear = findViewById(R.id.btnEscanear);
         Button btnSiguiente = findViewById(R.id.btnSiguiente);
         codigo = findViewById(R.id.codigo);
 
-        //Creamos un listener para el botón de escanear.
         btnEscanear.setOnClickListener(view -> {
             verificarYPedirPermisosDeCamara();
             if(permisoCamaraConcedido) {
@@ -68,19 +63,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //Creamos un listener para el botón siguiente.
         btnSiguiente.setOnClickListener(view -> {
             if(codigo.getText().toString().isEmpty()) {
                 Toast.makeText(MainActivity.this, "No se ha introducido ningún código",
                         Toast.LENGTH_SHORT).show();
             } else {
                 String codigoBarras = codigo.getText().toString();
-                String empresa = getInfo(codigoBarras, "brand");
-                String producto = getInfo(codigoBarras, "name");
-                String origen = getInfo(codigoBarras, "origin");
-
-                String[] contenido = {codigo.getText().toString(),
-                        empresa, producto, origen};
+                String[] contenido = {codigoBarras};
                 PdfCreator.createPdf(MainActivity.this,
                         getCacheDir().getAbsolutePath() + "/etiqueta.pdf", contenido);
                 Intent i = new Intent(MainActivity.this, ViewPdfActivity.class);
@@ -164,23 +153,5 @@ public class MainActivity extends AppCompatActivity {
             .setAction("Otorgar", view -> ActivityCompat.requestPermissions(MainActivity.this,
                     new String[]{android.Manifest.permission.CAMERA},
                     CODIGO_PERMISOS_CAMARA)).show();
-    }
-
-    /**
-     * Método que obtiene la información de la API sobre el producto recién escaneado.
-     *
-     * @param barcode Codigo de barras
-     * @param info Informacion a obtener
-     * @return Informacion
-     */
-    private String getInfo(String barcode, String info) {
-        try {
-            return barcodeAnalyzer.getInfo(barcode, info);
-        } catch(Exception e) {
-            Toast.makeText(this,
-                    "No se encuentra la empresa relacionada con este codigo",
-                    Toast.LENGTH_SHORT).show();
-            return "Desconocida";
-        }
     }
 }

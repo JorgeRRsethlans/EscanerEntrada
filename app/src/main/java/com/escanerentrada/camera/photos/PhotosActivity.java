@@ -1,5 +1,6 @@
 package com.escanerentrada.camera.photos;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -22,7 +23,8 @@ import com.escanerentrada.ssh.SSHHelper;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
-import java.util.UUID;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Clase que se encarga de tomar fotos y subirlas al servidor.
@@ -50,6 +52,7 @@ public class PhotosActivity extends BaseCameraActivity {
         btnAceptar.setOnClickListener(view -> {
             Intent i = getBaseContext().getPackageManager()
                     .getLaunchIntentForPackage(getBaseContext().getPackageName());
+            assert i != null;
             i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
@@ -104,7 +107,7 @@ public class PhotosActivity extends BaseCameraActivity {
                             SSHHelper sshHelper = new SSHHelper(username, password,
                                     "romantic-engelbart.212-227-226-16.plesk.page", 22);
 
-                            String uniqueKey = generateUniqueKey();
+                            String uniqueKey = namePhoto();
                             String remoteFilePath = remotePath + "/" + uniqueKey + ".jpg";
 
                             ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -151,5 +154,10 @@ public class PhotosActivity extends BaseCameraActivity {
      *
      * @return Clave única
      */
-    private String generateUniqueKey() { return UUID.randomUUID().toString(); }
+    private String namePhoto() {
+        Date ahora = new Date();
+        @SuppressLint("SimpleDateFormat")
+        SimpleDateFormat formato = new SimpleDateFormat("ddMMyyyy_HHmmss");
+        return "foto-" + formato.format(ahora);
+    }
 }
